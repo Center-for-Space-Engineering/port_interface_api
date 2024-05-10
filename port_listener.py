@@ -11,6 +11,7 @@ import threading
 
 # Custom python imports
 from threading_python_api.threadWrapper import threadWrapper # pylint: disable=import-error
+import system_constants 
 
 #import DTO for communicating internally
 from logging_system_display_python_api.DTOs.logger_dto import logger_dto # pylint: disable=import-error
@@ -63,7 +64,8 @@ class port_listener(threadWrapper):
         new_table = {
             self.__thread_name : [['batch_sample', self.__batch_size, 'byte']]
         }
-        self.__coms.send_request('Data Base', ['create_table_external', new_table])
+
+        self.__coms.send_request(system_constants.database_name, ['create_table_external', new_table])
     def run(self): #pylint: disable=R0915 #pylint disable=R1702
         '''
             This function actually listens to the tcpip port, and sends that data away to be saved. 
@@ -160,7 +162,7 @@ class port_listener(threadWrapper):
             This function sends the data out to everyone who wants a copy of it. 
         '''
         try :
-            self.__coms.send_request('Data Base', ['save_byte_data', self.__thread_name, data_dict_copy, self.__thread_name])
+            self.__coms.send_request(system_constants.database_name, ['save_byte_data', self.__thread_name, data_dict_copy, self.__thread_name])
             for tap in self.__tap_requests:
                 tap(data_dict_copy['batch_sample'], self.__thread_name)
         except Exception as e:
