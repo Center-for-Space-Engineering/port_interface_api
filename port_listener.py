@@ -39,6 +39,7 @@ class port_listener(threadWrapper):
         self.__thread_name = thread_name
         self.__server_address = (host, port)
         self.__batch_collection_number_before_save = batch_collection_number_before_save
+        self.__last_received = time.time()
 
         if batch_size <= 1024 and batch_size >= 16: 
             self.__batch_size = batch_size
@@ -72,7 +73,9 @@ class port_listener(threadWrapper):
         '''
         super().set_status('Running')
         start = time.time()
-        last_received = time.time()
+        
+
+        print(f"Started port listener at {self.__server_address[0]}:{self.__server_address[1]}")
 
         while super().get_running():
             #check to see if there is another task to be done
@@ -91,13 +94,11 @@ class port_listener(threadWrapper):
                     ### check for data ###
                     events = self.__selectors.select(timeout=0.1)  # Wait for events with a timeout of 0.1 seconds
                     if not events: # No events, sleep for a short duration
-                        time.sleep(0.01)  # Adjust the sleep duration as needed
+                        time.sleep(0.1)  # Adjust the sleep duration as needed
                     else : # we have an event lets handle it
                         for key, mask in events:
                             callback = key.data
                             callback(key, mask)
-                            last_received = time.time()
-                            self.__have_received = True
 
                     ### Reporting ###
                     if time.time() - start > 1: #check to see if it has been one second
@@ -107,8 +108,8 @@ class port_listener(threadWrapper):
                         self.__byte_count_received = 0
                         start = time.time() # set start to the new starting point
 
-                    ### Save Data if too much time has passed ###   
-                    if time.time() - last_received > 5 and self.__have_received: #if it has been 5 seconds since we have seen data save what we have to the data base and if batch_sample has been crated, and we have data to save. 
+                    ### Save Data if too much time has passed ###
+                    if (time.time() - self.__last_received) > 5 and self.__have_received: #if it has been 5 seconds since we have seen data save what we have to the data base and if batch_sample has been crated, and we have data to save. 
                         data_dict_copy = copy.deepcopy(self.__data_dict)
                         self.send_data(data_dict_copy=data_dict_copy)
                         # clear the buffer
@@ -116,13 +117,21 @@ class port_listener(threadWrapper):
                             for j in range(self.__batch_size):
                                 self.__data_dict['batch_sample'][i][j] = 0
                         self.__have_received = False
-                        self.__data_dict_idx = 0                  
+                        self.__data_dict_idx = 0
+
+                        print(f'Port has been quite, trying to reconnect.')
+
+                        # We are going to try and reconnect and see if we can get data 
+                        self.connect()            
                                            
                 except Exception as e: # pylint: disable=w0718
                     print(f"Serial listener had an error: {e}")
                     self.close_connection()
-                    dto = print_message_dto(f'Failed to open serial port for listening at {self.__pins}, will retry in 5 seconds. \n'+ f'{self.__thread_name} ->' + 'Error: ' + str(e))
+                    dto = print_message_dto(f'Failed to open serial port for listening at {self.__server_address}, will retry in 5 seconds. \n'+ f'{self.__thread_name} ->' + 'Error: ' + str(e))
                     self.__coms.print_message(dto, typeM=1)
+                    print(f'Failed to open serial port for listening at {self.__server_address}, will retry in 5 seconds. \n'+ f'{self.__thread_name} ->' + 'Error: ' + str(e))
+                    time.sleep(5) #wait for some time
+                    self.connect()#try and connect
             else :
                 time.sleep(5) #wait for some time
                 self.connect()#try and connect
@@ -140,6 +149,13 @@ class port_listener(threadWrapper):
         
         self.__byte_count_received += len(bytes_received)
 
+        if self.__byte_count_received > 0 :
+            self.__have_received = True
+            self.__last_received = time.time()
+        else :
+            self.__have_received = False
+
+
         for byte in bytes_received:
             self.__data_dict['batch_sample'][self.__data_dict_idx][self.__buffer_idx] = byte
             self.__buffer_idx += 1
@@ -155,7 +171,7 @@ class port_listener(threadWrapper):
                     for i in range(self.__batch_collection_number_before_save):
                         for j in range(self.__batch_size):
                             self.__data_dict['batch_sample'][i][j] = 0
-                    self.__have_received = False
+                    
                     self.__data_dict_idx = 0
     def send_data(self, data_dict_copy):
         '''
@@ -224,7 +240,7 @@ class port_listener(threadWrapper):
         '''
             This function returns the status for the serial listener to the webpage. 
         '''
-        with self.__status_lock:
+        if self.__status_lock.acquire(timeout=1):
             temp = {
                 'port' : self.__thread_name,
                 'connected' : self.__connected,
@@ -232,6 +248,9 @@ class port_listener(threadWrapper):
                 'stopbits' : "NA",
                 'subscribers' : str(self.__subscriber) if len(self.__subscriber) >= 1 else "No Subscribers",
             }
+            self.__status_lock.release()
+        else :
+            raise RuntimeError("Could not aquire status lock")
         return temp
     def kill_Task(self):
         '''
