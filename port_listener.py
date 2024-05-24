@@ -32,6 +32,7 @@ class port_listener(threadWrapper):
         }
         super().__init__(self.__function_dict)
         self.__status_lock = threading.Lock()
+        self.__tap_requests_lock = threading.Lock()
         self.__coms = coms
         self.__connected = False
         self.__byte_count_received = 0
@@ -179,10 +180,16 @@ class port_listener(threadWrapper):
         '''
         try :
             self.__coms.send_request(system_constants.database_name, ['save_byte_data', self.__thread_name, data_dict_copy, self.__thread_name])
-            for tap in self.__tap_requests:
-                tap(data_dict_copy['batch_sample'], self.__thread_name)
+            if self.__tap_requests_lock.acquire(timeout=1):
+                for tap in self.__tap_requests:
+                    tap(data_dict_copy['batch_sample'], self.__thread_name)
+                self.__tap_requests_lock.release()
+            else :
+                raise RuntimeError(f"Port listener {self.__thread_name} could not acquire tap requests lock")
+            
         except Exception as e:
             print(e)
+            self.__tap_requests_lock.release()
     def connect(self):
         '''
             This function connects to the serial port. 
@@ -234,8 +241,12 @@ class port_listener(threadWrapper):
                 args[0] : tap function to call. 
                 args[1] :  name of subscriber
         '''
-        self.__tap_requests.append(args[0])
-        self.__subscriber.append(args[1])
+        if self.__tap_requests_lock.acquire(timeout=1):
+            self.__tap_requests.append(args[0])
+            self.__subscriber.append(args[1])
+            self.__tap_requests_lock.release()
+        else :
+            raise RuntimeError(f"Port listener {self.__thread_name} could not acquire tap requests lock")
     def get_status_web(self):
         '''
             This function returns the status for the serial listener to the webpage. 
