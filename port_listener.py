@@ -11,7 +11,7 @@ import threading
 
 # Custom python imports
 from threading_python_api.threadWrapper import threadWrapper # pylint: disable=import-error
-import system_constants 
+import system_constants # pylint: disable=import-error
 
 #import DTO for communicating internally
 from logging_system_display_python_api.DTOs.logger_dto import logger_dto # pylint: disable=import-error
@@ -42,7 +42,7 @@ class port_listener(threadWrapper):
         self.__batch_collection_number_before_save = batch_collection_number_before_save
         self.__last_received = time.time()
 
-        if batch_size <= 1024 and batch_size >= 16: 
+        if 16 <= batch_size <= 1024: 
             self.__batch_size = batch_size
         else : 
             raise Exception(f'The given batch size {batch_size} is not with in bounds max allowed 1024 min allowed 16.') # pylint: disable=w0719
@@ -78,7 +78,7 @@ class port_listener(threadWrapper):
 
         print(f"Started port listener at {self.__server_address[0]}:{self.__server_address[1]}")
 
-        while super().get_running():
+        while super().get_running(): #pylint: disable=R1702
             #check to see if there is another task to be done
             request = super().get_next_request()
             # check to see if there is a request
@@ -120,7 +120,7 @@ class port_listener(threadWrapper):
                         self.__have_received = False
                         self.__data_dict_idx = 0
 
-                        print(f'Port has been quite, trying to reconnect.')
+                        print('Port has been quite, trying to reconnect.')
 
                         # We are going to try and reconnect and see if we can get data 
                         self.connect()            
@@ -180,14 +180,14 @@ class port_listener(threadWrapper):
         '''
         try :
             self.__coms.send_request(system_constants.database_name, ['save_byte_data', self.__thread_name, data_dict_copy, self.__thread_name])
-            if self.__tap_requests_lock.acquire(timeout=1):
+            if self.__tap_requests_lock.acquire(timeout=1): # pylint: disable=R1732
                 for tap in self.__tap_requests:
                     tap(data_dict_copy['batch_sample'], self.__thread_name)
                 self.__tap_requests_lock.release()
             else :
                 raise RuntimeError(f"Port listener {self.__thread_name} could not acquire tap requests lock")
             
-        except Exception as e:
+        except Exception as e: #pylint: disable=w0718
             print(e)
             self.__tap_requests_lock.release()
     def connect(self):
@@ -241,7 +241,7 @@ class port_listener(threadWrapper):
                 args[0] : tap function to call. 
                 args[1] :  name of subscriber
         '''
-        if self.__tap_requests_lock.acquire(timeout=1):
+        if self.__tap_requests_lock.acquire(timeout=1): # pylint: disable=R1732
             self.__tap_requests.append(args[0])
             self.__subscriber.append(args[1])
             self.__tap_requests_lock.release()
@@ -251,7 +251,7 @@ class port_listener(threadWrapper):
         '''
             This function returns the status for the serial listener to the webpage. 
         '''
-        if self.__status_lock.acquire(timeout=1):
+        if self.__status_lock.acquire(timeout=1): # pylint: disable=R1732
             temp = {
                 'port' : self.__thread_name,
                 'connected' : self.__connected,
