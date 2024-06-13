@@ -118,12 +118,7 @@ class port_listener(threadWrapper):
                             for j in range(self.__batch_size):
                                 self.__data_dict['batch_sample'][i][j] = 0
                         self.__have_received = False
-                        self.__data_dict_idx = 0
-
-                        print('Port has been quite, trying to reconnect.')
-
-                        # We are going to try and reconnect and see if we can get data 
-                        self.connect()            
+                        self.__data_dict_idx = 0          
                                            
                 except Exception as e: # pylint: disable=w0718
                     print(f"Serial listener had an error: {e}")
