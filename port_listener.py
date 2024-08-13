@@ -111,14 +111,13 @@ class port_listener(threadWrapper):
 
                     ### Save Data if too much time has passed ###
                     if (time.time() - self.__last_received) > 5 and self.__have_received: #if it has been 5 seconds since we have seen data save what we have to the data base and if batch_sample has been crated, and we have data to save. 
-                        data_dict_copy = copy.deepcopy(self.__data_dict)
                         self.send_data(data_dict_copy=data_dict_copy)
                         # clear the buffer
                         for i in range(self.__batch_collection_number_before_save):
                             for j in range(self.__batch_size):
                                 self.__data_dict['batch_sample'][i][j] = 0
                         self.__have_received = False
-                        self.__data_dict_idx = 0          
+                        self.__data_dict_idx = 0      
                                            
                 except Exception as e: # pylint: disable=w0718
                     print(f"Serial listener had an error: {e}")
@@ -129,7 +128,7 @@ class port_listener(threadWrapper):
                     time.sleep(5) #wait for some time
                     self.connect()#try and connect
             else :
-                time.sleep(5) #wait for some time
+                time.sleep(0.5) #wait for some time
                 self.connect()#try and connect
                 if self.__connected : 
                     start = time.time()
