@@ -111,6 +111,7 @@ class port_listener(threadWrapper):
 
                     ### Save Data if too much time has passed ###
                     if (time.time() - self.__last_received) > 5 and self.__have_received: #if it has been 5 seconds since we have seen data save what we have to the data base and if batch_sample has been crated, and we have data to save. 
+                        data_dict_copy = copy.deepcopy(self.__data_dict)
                         self.send_data(data_dict_copy=data_dict_copy)
                         # clear the buffer
                         for i in range(self.__batch_collection_number_before_save):
