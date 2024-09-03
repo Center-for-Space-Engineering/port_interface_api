@@ -76,7 +76,7 @@ class port_listener(threadWrapper):
         start = time.time()
         
 
-        print(f"Started port listener at {self.__server_address[0]}:{self.__server_address[1]}")
+        # print(f"Started port listener at {self.__server_address[0]}:{self.__server_address[1]}")
 
         while super().get_running(): #pylint: disable=R1702
             #check to see if there is another task to be done
@@ -175,7 +175,7 @@ class port_listener(threadWrapper):
         '''
         try :
             self.__coms.send_request(system_constants.database_name, ['save_byte_data', self.__thread_name, data_dict_copy, self.__thread_name])
-            if self.__tap_requests_lock.acquire(timeout=1): # pylint: disable=R1732
+            if self.__tap_requests_lock.acquire(timeout=10): # pylint: disable=R1732
                 for tap in self.__tap_requests:
                     tap(data_dict_copy['batch_sample'], self.__thread_name)
                 self.__tap_requests_lock.release()
@@ -236,7 +236,7 @@ class port_listener(threadWrapper):
                 args[0] : tap function to call. 
                 args[1] :  name of subscriber
         '''
-        if self.__tap_requests_lock.acquire(timeout=1): # pylint: disable=R1732
+        if self.__tap_requests_lock.acquire(timeout=10): # pylint: disable=R1732
             self.__tap_requests.append(args[0])
             self.__subscriber.append(args[1])
             self.__tap_requests_lock.release()
@@ -246,7 +246,7 @@ class port_listener(threadWrapper):
         '''
             This function returns the status for the serial listener to the webpage. 
         '''
-        if self.__status_lock.acquire(timeout=1): # pylint: disable=R1732
+        if self.__status_lock.acquire(timeout=10): # pylint: disable=R1732
             temp = {
                 'port' : self.__thread_name,
                 'connected' : self.__connected,
