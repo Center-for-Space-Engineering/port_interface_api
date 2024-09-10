@@ -64,7 +64,7 @@ class port_listener(threadWrapper):
         self.__tap_requests = []
         self.__subscriber = []
         new_table = {
-            self.__thread_name : [['batch_sample', self.__batch_size, 'byte']]
+            self.__thread_name : [['batch_sample', self.__batch_size, 'byte']],
         }
 
         self.__coms.send_request(system_constants.database_name, ['create_table_external', new_table])
